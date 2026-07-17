@@ -13,6 +13,27 @@ RUBY_MATERIAL_NAME = "Ruby"
 SHADER_GROUP_NAME = "Gem (Birefringent)"
 WORLD_ASSET_KEY = "gem_world_from_asset"
 
+# Modifier name prefix for gem tier modifiers (Blender 5.2 dropped ID properties
+# on NodesModifier, so we encode the tier index in the modifier's internal name).
+TIER_MOD_PREFIX = "GemTier_"
+
+
+def _mod_tier_index(mod: bpy.types.Modifier) -> int | None:
+    """Extract tier index from a modifier whose internal name starts with
+    ``GemTier_NNN``.  Returns None if the modifier isn't a gem tier."""
+    name = mod.name
+    if not name.startswith(TIER_MOD_PREFIX):
+        return None
+    try:
+        return int(name[len(TIER_MOD_PREFIX):][:3])
+    except (ValueError, IndexError):
+        return None
+
+
+def _is_gem_modifier(mod: bpy.types.Modifier) -> bool:
+    """True if *mod* is a NodesModifier belonging to the gem designer."""
+    return mod.type == 'NODES' and mod.name.startswith(TIER_MOD_PREFIX)
+
 
 def get_addon_dir() -> str:
     return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -208,24 +229,21 @@ def apply_tier_modifier(
     unnecessary bake invalidation).
     """
     ng = load_node_group()
-    tier_name: str = tier_data.get("name", f"Tier {tier_index + 1}")
 
-    # Find or create modifier
+    # Find or create modifier (Blender 5.2: name-based index, no ID properties)
     mod: bpy.types.NodesModifier | None = None
     for m in obj.modifiers:
-        if m.get("gem_tier_index") == tier_index:
+        if m.type == 'NODES' and _mod_tier_index(m) == tier_index:
             mod = m  # type: ignore[assignment]
             break
 
     if mod is None:
-        internal_name = f"GemTier_{tier_index:03d}"
+        internal_name = f"{TIER_MOD_PREFIX}{tier_index:03d}"
         mod = obj.modifiers.new(name=internal_name, type='NODES')  # type: ignore[assignment]
         mod.node_group = ng  # type: ignore[union-attr]
 
     mod.show_viewport = True  # type: ignore[union-attr]
     mod.show_render = True  # type: ignore[union-attr]
-    mod.name = f"Tier: {tier_name}"  # type: ignore[union-attr]
-    mod["gem_tier_index"] = tier_index  # type: ignore[index]
 
     if NODE_GROUP_NAME not in _socket_map_cache:
         _socket_map_cache[NODE_GROUP_NAME] = _get_socket_map(ng)
@@ -258,9 +276,10 @@ def apply_tier_modifier(
         if identifier is None:
             continue
         try:
-            current: float = mod[identifier]  # type: ignore[index]
+            input_prop = getattr(mod.properties.inputs, identifier)
+            current = input_prop.value
             if abs(current - value) > 1e-6:
-                mod[identifier] = value  # type: ignore[index]
+                input_prop.value = value
                 changed = True
         except Exception as e:
             print(f"[Gem Designer] ERROR setting '{identifier}' = {value}: {e}")
@@ -282,7 +301,9 @@ def sync_modifiers(
         kept_indices.add(i)
 
     for mod in list(obj.modifiers):
-        idx = mod.get("gem_tier_index")
+        if mod.type != 'NODES':
+            continue
+        idx = _mod_tier_index(mod)
         if idx is not None and idx not in kept_indices:
             obj.modifiers.remove(mod)
 
@@ -290,11 +311,8 @@ def sync_modifiers(
 def bake_tier_modifier(obj: bpy.types.Object, mod: bpy.types.Modifier) -> bool:
     """Bake the 'Bake' node inside a single geometry-nodes modifier.
 
-    Skips if already baked.  Returns True if a bake was triggered.
+    Returns True if a bake was triggered.
     """
-    if mod.get("gem_baked"):
-        return False
-
     if not hasattr(mod, "bakes"):
         return False
 
@@ -306,7 +324,6 @@ def bake_tier_modifier(obj: bpy.types.Object, mod: bpy.types.Modifier) -> bool:
                     modifier_name=mod.name,
                     bake_id=bake.bake_id,
                 )
-                mod["gem_baked"] = True
                 return True
             except (AttributeError, RuntimeError) as e:
                 print(f"[Gem Designer] Bake failed for '{mod.name}': {e}")
@@ -318,11 +335,8 @@ def bake_tier_modifier(obj: bpy.types.Object, mod: bpy.types.Modifier) -> bool:
 def _unbake_modifier(obj: bpy.types.Object, mod: bpy.types.Modifier) -> bool:
     """Delete bake data for the 'Bake' node in a single modifier.
 
-    Skips if already unbaked.  Returns True if bake data was deleted.
+    Returns True if bake data was deleted.
     """
-    if not mod.get("gem_baked"):
-        return False
-
     if not hasattr(mod, "bakes"):
         return False
 
@@ -334,7 +348,6 @@ def _unbake_modifier(obj: bpy.types.Object, mod: bpy.types.Modifier) -> bool:
                     modifier_name=mod.name,
                     bake_id=bake.bake_id,
                 )
-                mod["gem_baked"] = False
                 return True
             except (AttributeError, RuntimeError) as e:
                 print(f"[Gem Designer] Unbake failed for '{mod.name}': {e}")
@@ -352,7 +365,7 @@ def bake_all_tiers(obj: bpy.types.Object) -> int:
     for mod in obj.modifiers:
         if mod.type != 'NODES':
             continue
-        if mod.get("gem_tier_index") is None:
+        if _mod_tier_index(mod) is None:
             continue
         if bake_tier_modifier(obj, mod):
             baked += 1
@@ -370,7 +383,7 @@ def unbake_all_tiers(obj: bpy.types.Object) -> int:
     for mod in obj.modifiers:
         if mod.type != 'NODES':
             continue
-        if mod.get("gem_tier_index") is None:
+        if _mod_tier_index(mod) is None:
             continue
         if _unbake_modifier(obj, mod):
             deleted += 1
@@ -390,7 +403,7 @@ def bake_all_except(obj: bpy.types.Object, skip_tier_idx: int) -> tuple[int, int
     for mod in obj.modifiers:
         if mod.type != 'NODES':
             continue
-        idx = mod.get("gem_tier_index")
+        idx = _mod_tier_index(mod)
         if idx is None:
             continue
         if idx == skip_tier_idx:
