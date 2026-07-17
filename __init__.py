@@ -27,7 +27,7 @@ import bpy
 
 bl_info: dict[str, Any] = {
     "name": "Gem Designer",
-    "author": "Dekker + Hermes",
+    "author": "Dekker",
     "version": (0, 1, 1),
     "blender": (5, 0, 0),
     "location": "View3D > Sidebar > Gem",

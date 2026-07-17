@@ -67,6 +67,7 @@ def _draw_tier_list(
             col.prop(tier, "mirror_symmetry")  # type: ignore[arg-type]
             col.prop(tier, "angle")  # type: ignore[arg-type]
             col.prop(tier, "height")  # type: ignore[arg-type]
+            col.prop(tier, "frosted")  # type: ignore[arg-type]
 
 
 class GEM_PT_main_panel(bpy.types.Panel):

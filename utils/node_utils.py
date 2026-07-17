@@ -200,17 +200,17 @@ def load_node_group() -> bpy.types.NodeGroup:
 
 
 def _get_socket_map(ng: bpy.types.NodeGroup) -> dict[str, str]:
-    expected = {"Base Index", "Rotational Symmetry", "Mirror Symmetry", "Angle", "Height"}
+    expected = {"Base Index", "Rotational Symmetry", "Mirror Symmetry", "Angle", "Height", "Frosted"}
     socket_map: dict[str, str] = {}
-    for node in ng.nodes:
-        if node.type == 'GROUP_INPUT':
-            for sock in node.outputs:
-                if sock.name in expected:
-                    socket_map[sock.name] = sock.identifier
-                    expected.discard(sock.name)
+    for item in ng.interface.items_tree:
+        if hasattr(item, "name") and item.name in expected:
+            identifier = getattr(item, "identifier", "")
+            if identifier:
+                socket_map[item.name] = identifier
+                expected.discard(item.name)
     if expected:
         print(f"[Gem Designer] WARNING: Missing sockets in '{ng.name}': {expected}")
-        print(f"[Gem Designer] Available: {[s.name for s in ng.interface.items_tree]}")
+        print(f"[Gem Designer] Available: {[getattr(s, 'name', '?') for s in ng.interface.items_tree]}")
     return socket_map
 
 
@@ -268,6 +268,7 @@ def apply_tier_modifier(
         "Mirror Symmetry": gn_mirror,
         "Angle": gn_angle,
         "Height": tier_data.get("height", 0.0),
+        "Frosted": tier_data.get("frosted", 0.0),
     }
 
     changed = False

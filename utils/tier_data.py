@@ -15,6 +15,7 @@ DEFAULT_TIER: dict[str, Any] = {
     "mirror_symmetry": 2,  # teeth — ±N from base index (0 = single facet)
     "angle": 45.0,  # degrees, gem diagram convention
     "height": 1.0,
+    "frosted": 0.0,  # 0.0 = polished, 0.5 = satin, 1.0 = fully frosted
     "enabled": True,
     "active": False,
 }

@@ -103,6 +103,7 @@ def load_gcs(filepath: str) -> dict[str, Any]:
                 "ny": _parse_float(facet_elem, "ny"),
                 "nz": _parse_float(facet_elem, "nz"),
                 "index_angle": _parse_float(facet_elem, "index_angle"),
+                "frosting": _parse_float(facet_elem, "frosting"),
                 "vertices": [],
             }
             for vert_elem in facet_elem.findall("vertex"):
@@ -427,8 +428,11 @@ def _convert_gcs_tiers(gcs_data: dict[str, Any]) -> list[dict[str, Any]]:
         gcs_angle: float = tier["angle"]
         side: str = _gcs_tier_side(gcs_angle)
 
+        # Frosting amount from the first facet (0.0 if no frosting attribute)
+        frosted: float = facets[0].get("frosting", 0.0) if facets else 0.0
+
         for gi, (rot_sym, mirror, base_idx) in enumerate(groups):
-            # For multi-group tiers, suffix the name (e.g. "P2" → "P2a", "P2b")
+            # For multi-group tiers, suffix the name (e.g. "P2" -> "P2a", "P2b")
             name: str = tier["name"]
             if len(groups) > 1:
                 name = f"{name}{chr(ord('a') + gi)}"
@@ -441,6 +445,7 @@ def _convert_gcs_tiers(gcs_data: dict[str, Any]) -> list[dict[str, Any]]:
                 "mirror_symmetry": mirror,
                 "angle": _convert_gcs_angle(gcs_angle, side),
                 "height": tier["depth"],
+                "frosted": frosted,
                 "enabled": tier["visible"],
                 "active": False,
             })

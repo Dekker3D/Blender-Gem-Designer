@@ -64,6 +64,12 @@ class GemTierProperty(bpy.types.PropertyGroup):
     enabled: BoolProperty(name="Enabled", default=True,
         update=_on_tier_changed,
     )
+    frosted: FloatProperty(
+        name="Frosted",
+        description="Frosting amount: 0 = polished, 0.5 = satin, 1 = fully frosted",
+        default=0.0, min=0.0, max=1.0,
+        update=_on_tier_changed,
+    )
 
     def from_dict(self, d: dict[str, Any]) -> None:
         self.name = d.get("name", "Tier")
@@ -73,6 +79,7 @@ class GemTierProperty(bpy.types.PropertyGroup):
         self.mirror_symmetry = d.get("mirror_symmetry", 2)
         self.angle = math.radians(d.get("angle", 45.0))
         self.height = d.get("height", 1.0)
+        self.frosted = d.get("frosted", 0.0)
         self.enabled = d.get("enabled", True)
 
     def to_dict(self) -> dict[str, Any]:
@@ -84,6 +91,7 @@ class GemTierProperty(bpy.types.PropertyGroup):
             "mirror_symmetry": self.mirror_symmetry,
             "angle": math.degrees(self.angle),
             "height": self.height,
+            "frosted": self.frosted,
             "enabled": self.enabled,
             "active": False,
         }

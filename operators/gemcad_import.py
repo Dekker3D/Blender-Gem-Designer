@@ -726,6 +726,7 @@ def _convert_asc_tiers(asc_data: dict[str, Any]) -> list[dict[str, Any]]:
                 "mirror_symmetry": mirror,
                 "angle": angle,
                 "height": tier["distance"],
+                "frosted": 0.0,
                 "enabled": True,
                 "active": False,
             })
@@ -778,6 +779,7 @@ def _convert_gem_tiers(gem_data: dict[str, Any]) -> list[dict[str, Any]]:
                 "mirror_symmetry": mirror,
                 "angle": angle,
                 "height": tier.get("distance", 0.0),
+                "frosted": 0.0,
                 "enabled": True,
                 "active": False,
             })
