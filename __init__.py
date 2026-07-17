@@ -28,8 +28,8 @@ import bpy
 bl_info: dict[str, Any] = {
     "name": "Gem Designer",
     "author": "Dekker",
-    "version": (0, 1, 1),
-    "blender": (5, 0, 0),
+    "version": (1, 0, 1),
+    "blender": (5, 2, 0),
     "location": "View3D > Sidebar > Gem",
     "description": "Design faceted gemstones with parametric facet tiers",
     "category": "3D View",
